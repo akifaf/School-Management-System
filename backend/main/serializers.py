@@ -43,14 +43,23 @@ class StudentSerializer(serializers.ModelSerializer):
         user.save()
         student = Student.objects.create(user=user, **validated_data)
         return student
+    
+  
+    def update(self, instance, validated_data):
+        print('heyy')
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            user_instance = instance.user
+            for attr, value in user_data.items():
+                setattr(user_instance, attr, value)
+            user_instance.save()
 
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
 
-    def create(self, validated_data):
-        user_data = validated_data.pop('user')
-        user = User.objects.create(**user_data)
-        teacher = Teacher.objects.create(user=user, **validated_data)
-        user.is_teacher = True
-        return teacher
+        return instance
+
 
 class SubjectSerializer(serializers.ModelSerializer):
 
@@ -65,3 +74,12 @@ class TeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
         fields = ['user', 'subject', 'joined_date', 'subject']
+
+    
+
+    def create(self, validated_data):
+        user_data = validated_data.pop('user')
+        user = User.objects.create(**user_data)
+        teacher = Teacher.objects.create(user=user, **validated_data)
+        user.is_teacher = True
+        return teacher
