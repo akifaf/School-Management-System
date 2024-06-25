@@ -70,7 +70,8 @@ class SubjectSerializer(serializers.ModelSerializer):
         
 class TeacherSerializer(serializers.ModelSerializer):
     user = UserSerializer()
-    subject = SubjectSerializer()
+    subject = SubjectSerializer
+
     class Meta:
         model = Teacher
         fields = ['user', 'subject', 'joined_date', 'subject']
@@ -79,7 +80,27 @@ class TeacherSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user_data = validated_data.pop('user')
-        user = User.objects.create(**user_data)
-        teacher = Teacher.objects.create(user=user, **validated_data)
+        password = user_data.pop('password', None)
+        user = UserSerializer.create(UserSerializer(), validated_data=user_data)
+        if password:
+            user.set_password(password)
         user.is_teacher = True
+        user.save()
+        teacher = Teacher.objects.create(user=user, **validated_data)
         return teacher
+    
+    
+    def update(self, instance, validated_data):
+        print('heyy')
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            user_instance = instance.user
+            for attr, value in user_data.items():
+                setattr(user_instance, attr, value)
+            user_instance.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        return instance

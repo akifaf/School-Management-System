@@ -1,5 +1,6 @@
 from django.shortcuts import render, HttpResponse
 from rest_framework.response import Response
+from django.http.response import JsonResponse
 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -40,15 +41,32 @@ class StudentRegisterView(generics.CreateAPIView):
 
 class StudentListUpdateView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = StudentSerializer
-
-    # def get(self, request, pk):
-    #     student = get_object_or_404(Student, user_id=pk)
-    #     serializer = self.get_serializer(student)
-    #     return Response(serializer.data)
-
     def get_object(self):
         pk = self.kwargs.get('pk')
         return get_object_or_404(Student, user_id=pk)
+
+    def put(self,request,*args, **kwargs):
+        instance = self.get_object()
+        data = request.data.copy()
+        password = data.get('password')
+        if password:
+            instance.set_password(password)
+            instance.save()
+            data.pop('password',None)
+        serializer = self.get_serializer(instance,data = request.data,partial = True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            print(serializer.errors)
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+
+
+class TeacherListUpdateView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = TeacherSerializer
+    def get_object(self):
+        pk = self.kwargs.get('pk')
+        return get_object_or_404(Teacher, user_id=pk)
 
     def put(self,request,*args, **kwargs):
         instance = self.get_object()
@@ -86,39 +104,38 @@ class ClassRoomAPIView(generics.ListCreateAPIView):
     permission_classes = [IsAdminUser, IsAuthenticated]
 
 
-class SubjectList(generics.ListCreateAPIView):
+class SubjectListCreateView(generics.ListCreateAPIView):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
-    permission_classes = [IsAdminUser, IsAuthenticated]
+
+class SubjectUpdateView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Subject.objects.all()
+    serializer_class = SubjectSerializer
 
 
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
-from .models import User
+class BlockUserView(APIView):
+    permission_classes = [IsAdminUser]
 
-@api_view(['PATCH'])
-def block_user(request, pk):
-    try:
-        user = User.objects.get(pk=pk)
-        user.is_active = False
-        user.save()
-        return Response({"message": "User blocked successfully"}, status=status.HTTP_200_OK)
-    except User.DoesNotExist:
-        return Response({"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
-@api_view(['PATCH'])
-def unblock_user(request, pk):
-    try:
-        user = User.objects.get(pk=pk)
-        user.is_active = True
-        user.save()
-        return Response({"message": "User Activated"}, status=status.HTTP_200_OK)
-    except User.DoesNotExist:
-        return Response({"error": "User does not exist"}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+            user.is_active = False
+            user.save()
+            serializer = UserSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
+class UnBlockUserView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+            user.is_active = True
+            user.save()
+            serializer = UserSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)

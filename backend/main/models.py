@@ -95,6 +95,9 @@ class ClassRoom(models.Model):
     
     def __str__(self):
         return f'{self.class_no} {self.section}'
+    
+    def get_class(self):
+        return f'{self.class_no} {self.section}'
 
 class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
